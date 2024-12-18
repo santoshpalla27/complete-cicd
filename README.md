@@ -1,4 +1,4 @@
-first install the prequties using installation file 
+first install the prequeties using installation file 
 
 on support server:-
 
@@ -9,6 +9,10 @@ tomcat main sever should run 8082 so it wont confict with nexus server and shoul
 nexus server will be running on port 8082 and go to page and create two repos and copy the repo link to the pom.xml and edit maven setting in jenkins server 
 
 jenkins server:- 
+
+first aws configure
+
+run eks commands to install eks server 
 
 install plugins and edit the maven setting file
 

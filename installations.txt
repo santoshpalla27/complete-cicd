@@ -1,10 +1,43 @@
-      cicd project with :- git,Jenkins,maven,nexus,tomcat,trivy,docker,sonarube,tomcat(container)
+      cicd project with :- git,Jenkins,maven,nexus,tomcat,trivy,docker,sonarube,tomcat(container),eks,argocd
 
-Jenkins server:- Jenkins,maven,trivy,docker,git (t2.medium)
+Jenkins server:- Jenkins,maven,trivy,docker,git,eks (t2.medium)
 
 ports:8080 and tomcat will run on port 80 with docker container 
 
-jenkins plugins :- deploy to container,pipeline stage view
+
+first aws configure in the Linux machine 
+
+and install eksctl 
+
+curl -L "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz" -o eksctl.tar.gz
+tar -xzf eksctl.tar.gz
+sudo mv eksctl /usr/local/bin
+eksctl version
+
+install kubectl 
+
+curl -LO "https://dl.k8s.io/release/v1.24.0/bin/linux/amd64/kubectl"
+chmod +x ./kubectl
+sudo mv ./kubectl /usr/local/bin/kubectl
+kubectl version --client
+
+========================================================
+ to start Kubernetes cluster 
+
+eksctl create cluster --name santosh --nodegroup-name santosh-nodes --node-type t3.micro --nodes 8 --managed
+=========================================================
+to update the kubeconfig to present working cluster
+
+aws eks update-kubeconfig --region <region> --name <cluster-name>
+===========================================================
+                 delete eks cluster
+            
+eksctl get cluster
+eksctl delete cluster --name <cluster-name> --region <region>
+
+
+
+jenkins plugins :- deploy to container,pipeline stage view,docker
 
 
 sudo wget -O /etc/yum.repos.d/jenkins.repo \
@@ -39,6 +72,7 @@ systemctl restart docker
 systemctl restart Jenkins -- to run docker on jenkins
 
 
+install argocd on  eks cluster 
 
                     
 
@@ -46,7 +80,7 @@ systemctl restart Jenkins -- to run docker on jenkins
 
 
 
-support sever 2 :-nexus and tomcat and SonarQube (t2.medium) 
+support sever 2 :-nexus and tomcat and SonarQube (t2.large) 
 
 port :- 9000 8081 8082
 
@@ -112,7 +146,8 @@ set new password may be as admin
 and Enable anonymous access
 
 make 2 folders in nexus repo and copy the url and paste in pom.xml
-and edit vi /etc/maven/settings.xml
+
+and edit vi /etc/maven/settings.xml on main server 
 
 
 yum install java -y
@@ -186,83 +221,5 @@ docker-compose up -d
 
 go to my account and security and generate token and user token
 
-
-
-Jenkins file 
-
-
-pipeline {
-    agent any
-
-    environment {
-        IMAGE_NAME = 'tomcat' // Replace with your Docker image name
-        CONTAINER_NAME = 'tomcat-server' // Replace with your container name
-    }
-
-    stages {
-        stage('Poll SCM') {
-            steps {
-                git branch: 'main', url: 'https://github.com/santoshpalla27/my-ci-.git'
-            }
-        }
-        stage('sonar analysis') {
-            steps {
-                sh ''' mvn sonar:sonar \
-                      -Dsonar.host.url=http://54.90.107.78:9000/ \
-                      -Dsonar.login=squ_cbc28c9f992b252d3ad940fd217c77c3f146f5ec '''
-            }
-        }
-        stage('mvn build') {
-            steps {
-                sh "mvn clean install "
-            }
-        }
-        stage('Deploy WAR to Tomcat') {
-            steps {
-                deploy adapters: [tomcat9(credentialsId: 'tomcat-credentials', path: '', url: 'http://54.90.107.78:8082/')], contextPath: 'webapp', war: '**/*.war'
-            }
-        }
-        stage('mvn deploy to nexus') {
-            steps {
-                sh "mvn clean deploy "
-            }
-        }
-        stage('Cleanup Old Images') {
-            steps {
-                sh "docker rmi -f \$(docker images -q --filter 'dangling=true') || true"
-                sh "docker rmi -f \$(docker images -q ${IMAGE_NAME}) || true"
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                sh "docker build -t ${IMAGE_NAME} -f Dockerfile ."
-            }
-        }
-        stage('Scan Docker Image and Repository') {
-            steps {
-                sh "trivy image ${IMAGE_NAME}"
-                sh "trivy fs ."
-            }
-        }
-        stage('Cleanup Old Containers') {
-            steps {
-                sh "docker rm -f ${CONTAINER_NAME} || true"
-            }
-        }
-
-        stage('Run New Container') {
-            steps {
-                sh "docker run -d --name ${CONTAINER_NAME} -p 80:8080 ${IMAGE_NAME}"
-            }
-        }
-    }
-
-    post {
-        always {
-            echo 'Pipeline completed.'
-        }
-    }
-}
 
 

@@ -17,12 +17,12 @@
 	<distributionManagement>
 		 <snapshotRepository>
 		    <id>NexusRepo</id>
-		    <url>http://18.209.65.142:8081/repository/project-snapshot/</url>
+		    <url>http://34.228.245.199:8081/repository/santosh-snapshot/</url>
 		 </snapshotRepository>
 		
 		<repository>
 		    <id>NexusRepo</id>
-		    <url>http://18.209.65.142:8081/repository/project-release/</url>
+		    <url>http://34.228.245.199:8081/repository/santosh-release/</url>
 		</repository>
   	</distributionManagement>
 

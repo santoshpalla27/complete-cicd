@@ -3,21 +3,23 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'tomcat' // Replace with your Docker image name
+        IMAGE_NAME = 'santoshpalla27/complete-cicd:${BUILD_NUMBER}' // Replace with your Docker image name
         CONTAINER_NAME = 'tomcat-server' // Replace with your container name
+        GIT_USER_NAME = 'santoshpalla27'
+        GIT_REPO_NAME = 'complete-cicd'
     }
 
     stages {
         stage('Poll SCM') {
             steps {
-                git branch: 'main', url: 'https://github.com/santoshpalla27/my-ci-.git'
+                git branch: 'main', url: 'https://github.com/santoshpalla27/complete-cicd.git'
             }
         }
         stage('sonar analysis') {
             steps {
                 sh ''' mvn sonar:sonar \
-                      -Dsonar.host.url=http://18.209.65.142:9000/ \
-                      -Dsonar.login=squ_f14b48c6af42c66f4302e1b962b97e4463d77d8d '''
+                      -Dsonar.host.url=http://34.228.245.199:9000/ \
+                      -Dsonar.login=squ_830c7d10f43c818cdcce4e9cfc317f056e9541e4 '''
             }
         }
         stage('mvn build') {
@@ -27,7 +29,7 @@ pipeline {
         }
         stage('Deploy WAR to Tomcat') {
             steps {
-                deploy adapters: [tomcat9(credentialsId: 'tomcat-credentials', path: '', url: 'http://18.209.65.142:8082/')], contextPath: 'webapp', war: '**/*.war'
+                deploy adapters: [tomcat9(credentialsId: 'tomcat-credentials', path: '', url: 'http://34.228.245.199:8082/')], contextPath: 'santosh-app', war: '**/*.war'
             }
         }
         stage('mvn deploy to nexus') {
@@ -56,6 +58,7 @@ pipeline {
             steps {
                 sh "trivy image ${IMAGE_NAME}"
                 sh "trivy fs ."
+                sh "trivy image --format json --output results.json ${IMAGE_NAME}"
             }
         }
         stage('Run New Container') {
@@ -63,7 +66,30 @@ pipeline {
                 sh "docker run -d --name ${CONTAINER_NAME} -p 80:8080 ${IMAGE_NAME}"
             }
         }
+        stage('docker push') {
+            steps {
+                withCredentials([string(credentialsId: 'dockerpass', variable: 'dockerpass')]) {
+                    sh "docker login -u santoshpalla27 -p ${dockerpass}"
+                }
+                sh "docker push ${IMAGE_NAME}"
+            }
+        }
+        stage('github edit') {
+            steps {
+                withCredentials([string(credentialsId: 'githubtoken', variable: 'githubtoken')]) {
+                sh '''
+                git config user.email "santoshpalla2002@gmail.com"
+                git config user.name ${GIT_USER_NAME}
+                sed -i "s/santoshpalla27\\/cicd:.*/santoshpalla27\\/cicd:${BUILD_NUMBER}/g" deployment/tomcat-deployment
+                git add .
+                git commit -m "deployment image updated" 
+                git push https://${githubtoken}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                '''
+                }
+            }
+        }
     }
+    
 
     post {
         always {
