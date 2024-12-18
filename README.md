@@ -37,3 +37,32 @@ go to setting and web hook and add http://<jenkins-domain>/github-webhook/
 and content type application Json
 
 and select all events or push by choice and create
+
+copy the docker image to the dockerhub
+
+use pipeline syntax withcredentials bind cred to var and save pass as secret text
+
+withCredentials([string(credentialsId: 'dockerpass', variable: 'dockerpass')]) {
+    // some block
+}
+
+edit same as docker image put github token in cred 
+
+stage('github edit') {
+            steps {
+                withCredentials([string(credentialsId: 'githubtoken', variable: 'githubtoken')]) {
+                sh '''
+                git config user.email "santoshpalla2002@gmail.com"
+                git config user.name ${GIT_USER_NAME}
+                sed -i "s/santoshpalla27\\/cicd:.*/santoshpalla27\\/cicd:${BUILD_NUMBER}/g" deployment/tomcat-deployment.yaml
+                git add .
+                git commit -m "deployment image updated" 
+                git push https://${githubtoken}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                '''
+                }
+            }
+        }
+
+
+
+create an app on argocd ad set sync policy automatic and self heal
